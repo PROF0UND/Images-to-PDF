@@ -7,15 +7,18 @@ from PIL import Image
 class ImageToPDFConverter:
     def __init__(self, root):
         self.root = root
-        self.image_paths = []  # Corrected to image_paths
+        self.image_paths = [] 
         self.output_pdf_name = tk.StringVar()
         self.selected_images_listbox = tk.Listbox(root, selectmode=tk.MULTIPLE)
+        self.color = (1, 1, 1)
+        self.page = ''
+        self.page_sizes = {}
 
         self.initialize_ui()
 
     def initialize_ui(self):
-        title_label = tk.Label(self.root, text='Image to PDF Converter', font=('Helvetica', 16, 'bold'))  # Corrected font name
-        title_label.pack(pady=10)  # Removed unnecessary parentheses around 10
+        title_label = tk.Label(self.root, text='Image to PDF Converter', font=('Helvetica', 16, 'bold'))  
+        title_label.pack(pady=10)  
 
         select_images_button = tk.Button(self.root, text='Select Images', command=self.select_image)
         select_images_button.pack(pady=(0, 10))
@@ -26,10 +29,49 @@ class ImageToPDFConverter:
         label.pack()
 
         pdf_name_entry = tk.Entry(self.root, textvariable=self.output_pdf_name, width=40, justify='center')
-        pdf_name_entry.pack()
+        pdf_name_entry.pack(pady=10)
+
+        label = tk.Label(self.root, text='Background Color')
+        label.pack()
+
+        selected_color = tk.StringVar(value="None")
+
+        radiobutton_black = tk.Radiobutton(self.root, text="Black", command= self.set_black, variable=selected_color, value="1" )
+        radiobutton_black.pack()
+
+        radiobutton_white = tk.Radiobutton(self.root, text="White", command= self.set_white, variable=selected_color, value="2")
+        radiobutton_white.pack(pady=10)
+
+
+        label = tk.Label(self.root, text='Page Sizes')
+        label.pack()
+
+        page_size = tk.StringVar(value= 'None')
+
+        radiobutton_A4 = tk.Radiobutton(self.root, text="A4", command= self.page_A4, variable=page_size, value="1" )
+        radiobutton_A4.pack()
+
+        radiobutton_fillpage = tk.Radiobutton(self.root, text="Dont Resize", command= self.dont_resize, variable=page_size, value="2")
+        radiobutton_fillpage.pack(pady=10)
 
         convert_button = tk.Button(self.root, text='Convert to PDF', command=self.convert_images_to_pdf)
         convert_button.pack(pady=(20, 40))
+
+    def set_black(self):
+        self.color = (0,0,0)
+
+    def set_white(self):
+        self.color = (1,1,1)
+
+
+    def page_A4(self):
+        self.page = 'A4'
+
+    def dont_resize(self):
+        self.page = 'dont'
+
+    
+        
 
     def select_image(self):
         self.image_paths = filedialog.askopenfilenames(
@@ -41,7 +83,7 @@ class ImageToPDFConverter:
     def update_selected_images_listbox(self):
         self.selected_images_listbox.delete(0, tk.END)
         for image_path in self.image_paths:
-            _, image_name = os.path.split(image_path)  # Corrected to get the filename
+            _, image_name = os.path.split(image_path)  
             self.selected_images_listbox.insert(tk.END, image_name)
 
     def convert_images_to_pdf(self):
@@ -49,30 +91,43 @@ class ImageToPDFConverter:
             return 
 
         output_pdf_path = self.output_pdf_name.get() + '.pdf' if self.output_pdf_name.get() else 'output.pdf' 
-        pdf = canvas.Canvas(output_pdf_path, pagesize=(2480, 3508))
+        
+        if self.page == 'A4':
+            pdf = canvas.Canvas(output_pdf_path, pagesize=(2480, 3508))
 
-        for image_path in self.image_paths:
-            img = Image.open(image_path)
-            available_width = 2480
-            available_height = 3508
-            scale_factor = min(available_width / img.width, available_height / img.height)
-            new_width = img.width * scale_factor
-            new_height = img.height * scale_factor
-            x_centered = (2480 - new_width) / 2
-            y_centered = (3508 - new_height) / 2
+            for image_path in self.image_paths:
+                img = Image.open(image_path)
+                available_width = 2480
+                available_height = 3508
+                scale_factor = min(available_width / img.width, available_height / img.height)
+                new_width = img.width * scale_factor
+                new_height = img.height * scale_factor
+                x_centered = (2480 - new_width) / 2
+                y_centered = (3508 - new_height) / 2
 
-            pdf.setFillColorRGB(1, 1, 1)  # Corrected the color values to 1 for white
-            pdf.rect(0, 0, 612, 792, fill=True)
-            pdf.drawInlineImage(img, x_centered, y_centered, width=new_width, height=new_height)
-            pdf.showPage()
+                pdf.setFillColorRGB(*self.color) 
+                pdf.rect(0, 0, 2480, 3508, fill=True)
+                pdf.drawInlineImage(img, x_centered, y_centered, width=new_width, height=new_height)
+                pdf.showPage()
+            
+            
+        elif self.page == 'dont':
+            pdf = canvas.Canvas(output_pdf_path)
+            for image_path in self.image_paths:
+                img = Image.open(image_path)
+                pdf.setPageSize((img.width, img.height))
+                pdf.setFillColorRGB(*self.color)
+                pdf.rect(0, 0, img.width, img.height, fill=True)
+                pdf.drawInlineImage(img, 0, 0, width=img.width, height=img.height)
+                pdf.showPage()
 
-        pdf.save()  # Corrected the call to save the PDF
+        pdf.save()  
 
 def main():
     root = tk.Tk()
     root.title('Image to PDF')
     converter = ImageToPDFConverter(root)
-    root.geometry('400x600')
+    root.geometry('600x600')
     root.mainloop()
 
 if __name__ == '__main__':
